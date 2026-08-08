@@ -32,3 +32,7 @@ redisdata/
 .DS_Store
 .idea/
 *.swp
+
+# LLM Provider specific
+.claude/
+graphify-output/

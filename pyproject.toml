@@ -1,0 +1,39 @@
+[project]
+name = "propai"
+version = "0.1.0"
+description = "AI-assisted property marketing platform for Prolov Agencies"
+requires-python = ">=3.12"
+dependencies = [
+    "propai-core",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "ruff>=0.8.0",
+    "mypy>=1.13.0",
+]
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[tool.uv.sources]
+propai-core = { workspace = true }
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "integration: requires a live postgres (deselect with '-m \"not integration\"')",
+]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true

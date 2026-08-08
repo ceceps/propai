@@ -2,6 +2,8 @@
 
 **Date:** 2026-08-08
 **Status:** Approved for implementation
+**Client:** Prolov (property agency)
+**Market:** Aceh — Banda Aceh / Lhokseumawe
 **Scope:** 8 days, 2 of 4 agents
 **Source docs:** `AGENTS.md` (concrete spec), `PLANNING.md` (narrative spec)
 

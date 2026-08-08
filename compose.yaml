@@ -1,0 +1,106 @@
+# PropAI local stack. Runs under podman-compose or docker compose.
+# Ports bind to 127.0.0.1 only: nothing here is hardened for public exposure.
+
+x-app-env: &app-env
+  DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-propai}:${POSTGRES_PASSWORD:-propai}@postgres:5432/${POSTGRES_DB:-propai}
+  REDIS_URL: redis://redis:6379/0
+  LLM_BASE_URL: ${LLM_BASE_URL:-}
+  LLM_API_TOKEN: ${LLM_API_TOKEN:-}
+  LLM_MODEL: ${LLM_MODEL:-gpt-5.6}
+  LLM_MODEL_CHAT: ${LLM_MODEL_CHAT:-}
+  LLM_IMAGE_MODEL: ${LLM_IMAGE_MODEL:-gpt-image-2}
+  LLM_EMBEDDING_MODEL: ${LLM_EMBEDDING_MODEL:-text-embedding-3-small}
+  PROPAI_PROVIDER_MODE: ${PROPAI_PROVIDER_MODE:-fake}
+  SECRET_KEY: ${SECRET_KEY:-}
+  IP_HASH_SALT: ${IP_HASH_SALT:-}
+  PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8000}
+  WHATSAPP_AGENCY_NUMBER: ${WHATSAPP_AGENCY_NUMBER:-}
+  EMBEDDING_DIM: ${EMBEDDING_DIM:-1536}
+
+services:
+  postgres:
+    image: docker.io/pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-propai}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-propai}
+      POSTGRES_DB: ${POSTGRES_DB:-propai}
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-propai} -d ${POSTGRES_DB:-propai}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: docker.io/redis:7-alpine
+    ports:
+      - "127.0.0.1:6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  migrate:
+    build:
+      context: .
+      dockerfile: services/api/Containerfile
+    environment: *app-env
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: services/api/Containerfile
+    environment: *app-env
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    command:
+      ["uvicorn", "propai_api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    volumes:
+      - ./packages:/app/packages
+      - ./services:/app/services
+      - ./migrations:/app/migrations
+
+  worker:
+    build:
+      context: .
+      dockerfile: services/worker/Containerfile
+    environment: *app-env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    command: ["rq", "worker", "--url", "redis://redis:6379/0", "default"]
+    volumes:
+      - ./packages:/app/packages
+      - ./services:/app/services
+
+  web:
+    build:
+      context: ./services/web
+      dockerfile: Containerfile
+    ports:
+      - "127.0.0.1:5173:5173"
+    environment:
+      VITE_API_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8000}
+    depends_on:
+      - api
+    volumes:
+      - ./services/web/src:/app/src
+
+volumes:
+  pgdata:
