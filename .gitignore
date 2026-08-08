@@ -1,0 +1,34 @@
+# Secrets — MUST stay untracked. LLM_API_TOKEN lives here.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Generated media and uploads
+media/
+uploads/
+generated/
+*.local.json
+
+# Containers / local state
+.podman/
+pgdata/
+redisdata/
+
+# Editor / OS
+.DS_Store
+.idea/
+*.swp
