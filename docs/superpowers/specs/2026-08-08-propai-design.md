@@ -3,7 +3,7 @@
 **Date:** 2026-08-08
 **Status:** Approved for implementation
 **Client:** Prolov (property agency)
-**Market:** Aceh — Banda Aceh / Lhokseumawe
+**Market:** Jawa Barat
 **Scope:** 8 days, 2 of 4 agents
 **Source docs:** `AGENTS.md` (concrete spec), `PLANNING.md` (narrative spec)
 
@@ -26,7 +26,9 @@
 ### Deferred (explicitly not built)
 
 - **Agency Manager Agent** — analytics, Google Calendar sync, weekly reports
-- **Data Ingestion Agent** — `acehome.co.id` scraper
+- **Data Ingestion Agent** — `acehome.co.id` scraper. **Stale target:** the market moved
+  to Jawa Barat on 2026-08-08, so this Aceh-specific source no longer matches. A West Java
+  listing source must be chosen when that phase is specced.
 - `surveys` table (belongs to Agency Manager; no dead migration shipped)
 - Custom domains per agent, A/B testing of copy variants
 
@@ -95,7 +97,7 @@ propai/
   services/content_agent/
   services/sales_agent/
   services/dashboard/
-  seeds/                     # synthetic Aceh listings + ID/EN documents
+  seeds/                     # synthetic Jawa Barat listings + ID/EN documents
   tests/
 ```
 
@@ -194,6 +196,13 @@ This is also what makes bilingual output safe: the agent catches a bad Indonesia
 Weaviate was considered and rejected for this scope. Reasons, in order of weight:
 
 1. **Bilingual hybrid retrieval.** Postgres ships an `indonesian` text-search config (verified present alongside `english`). This allows dense vector search **and** Indonesian-stemmed BM25 in one SQL query, joined directly to `properties`. Weaviate's BM25 has no Indonesian stemmer — lexical recall degrades on exactly the domain terms that matter (`sertifikat`, `HGB`, `KPR`).
+
+   **Measured limitation (2026-08-08).** The stemmer handles verb affixes correctly —
+   `dijual` and `menjual` both reduce to `jual` — but it over-strips some nouns:
+   `perumahan` reduces to `rumah`, which does **not** unify with `rumah`. So Indonesian
+   FTS is not a substitute for semantic search on noun morphology. This strengthens
+   rather than weakens the hybrid design: the dense-vector half covers precisely the
+   recall gap the lexical half leaves. Lexical-only retrieval would miss these matches.
 
 2. **RBAC is the security argument.** The matrix scopes leads per agent. With pgvector that is `WHERE owner_id = :user` in the same query as the vector search. With Weaviate, authorization logic is duplicated into Weaviate metadata filters that must stay in sync with Postgres truth. Duplicated authorization across two stores is how leads leak between agents.
 
@@ -315,7 +324,7 @@ All run offline against fixture-backed fakes.
 
 Synthetic, generated during Phase 1:
 
-- **~15 Aceh-market listings** — Banda Aceh / Lhokseumawe areas, IDR pricing, plausible specs.
+- **~15 Jawa Barat listings** — Bandung / Bekasi / Bogor / Depok areas, IDR pricing, plausible specs.
 - **3–4 Indonesian property documents** — `sertifikat`/HGB explainer, KPR financing FAQ, developer brochure. These form the RAG corpus.
 
 Real data swaps in whenever available; no scraper dependency.
@@ -329,7 +338,7 @@ Conventional-commit style, one commit per feature, each day ending on a working 
 | Day | Phase | Ships | Commits |
 |---|---|---|---|
 | 1 | Foundation | `.gitignore` **first**, compose (6 services), pgvector, migrations, `propai_core` | ~6 |
-| 2 | Auth + data | Password auth, RBAC query layer, listings CRUD, synthetic Aceh seed | ~6 |
+| 2 | Auth + data | Password auth, RBAC query layer, listings CRUD, synthetic Jawa Barat seed | ~6 |
 | 3 | Content I | Provider interfaces + probes, bilingual AIDA copy, SEO, Redis cache | ~6 |
 | 4 | Content II | Photo labeling, `gpt-image-2` staging, job queue, dashboard review/approve | ~7 |
 | 5 | Landing pages | Jinja2 pages, shortlink codes, `/r/{code}` + click tracking, contact button + `wa.me` | ~7 |

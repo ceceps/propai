@@ -16,7 +16,7 @@ propai/
   services/content_agent/      # worker, no port
   services/sales_agent/        # FastAPI :8001
   services/dashboard/          # Streamlit :8501
-  seeds/                       # synthetic Aceh listings + ID/EN docs
+  seeds/                       # synthetic Jawa Barat listings + ID/EN docs
   tests/
 ```
 

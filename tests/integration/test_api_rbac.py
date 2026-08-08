@@ -48,13 +48,13 @@ def world():
         p1 = Property(
             title="Rumah Lamprit",
             price=Decimal("850000000"),
-            location="Banda Aceh",
+            location="Bandung",
             owner_id=a1.id,
         )
         p2 = Property(
             title="Ruko Peunayong",
             price=Decimal("1200000000"),
-            location="Banda Aceh",
+            location="Bandung",
             owner_id=a2.id,
         )
         s.add_all([p1, p2])
@@ -141,7 +141,7 @@ def test_freelance_cannot_create(client, world):
     t = _token(client, world["fr_email"], "pw-freelance")
     r = client.post(
         "/properties",
-        json={"title": "Nope", "price": 1000, "location": "Banda Aceh"},
+        json={"title": "Nope", "price": 1000, "location": "Bandung"},
         headers=_auth(t),
     )
     assert r.status_code == 403
