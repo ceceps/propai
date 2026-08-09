@@ -165,15 +165,24 @@ export default function App() {
                   </div>
                   <h3 className="text-lg font-bold text-white mb-2">{p.title}</h3>
                   {p.photos?.length > 0 && (
-                    <img 
-                      src={`http://localhost:8000${JSON.parse(p.photos[0].path).feature_image}`} 
-                      alt={p.title}
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        console.error('Image failed to load:', target.src);
-                      }}
-                      className="w-full h-48 object-cover rounded-lg mb-4"
-                    />
+                    <div className="mb-4">
+                      {(() => {
+                        try {
+                          const rawPath = p.photos[0].path;
+                          const pathData = typeof rawPath === 'string' ? JSON.parse(rawPath) : rawPath;
+                          const imgUrl = `http://localhost:8000${pathData.feature_image}`;
+                          return (
+                            <img 
+                              src={imgUrl} 
+                              alt={p.title}
+                              className="w-full h-48 object-cover rounded-lg"
+                            />
+                          );
+                        } catch (e) {
+                          return <div className="text-xs text-red-500">Image Parse Error</div>;
+                        }
+                      })()}
+                    </div>
                   )}
                   <p className="text-indigo-400 font-semibold text-lg mb-4">{formattedPrice}</p>
                   <p className="text-slate-300 text-sm mb-4 line-clamp-3">{p.description || 'No description provided.'}</p>

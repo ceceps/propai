@@ -43,8 +43,13 @@ def list_properties(
     limit: int = Query(50, le=200),
     offset: int = Query(0, ge=0),
 ) -> list[Property]:
-    stmt = scope_properties(select(Property), user).options(selectinload(Property.photos))
-    stmt = stmt.order_by(Property.created_at.desc()).limit(limit).offset(offset)
+    stmt = (
+        scope_properties(select(Property), user)
+        .options(selectinload(Property.photos))
+        .order_by(Property.created_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
     return list(session.scalars(stmt))
 
 
