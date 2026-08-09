@@ -4,6 +4,8 @@
 !.env.example
 *.pem
 *.key
+HOW_USE.md
+*.code-workspace
 
 # Python
 __pycache__/
@@ -34,5 +36,8 @@ redisdata/
 *.swp
 
 # LLM Provider specific
+.bob/.bob-erros
+.bob/**/*.log
 .claude/
 graphify-output/
+skills-lock.json

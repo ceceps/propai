@@ -43,7 +43,7 @@ class Settings(BaseSettings):
             "llm_api_token", "llm_auth_token", "llm_api_key"
         ),
     )
-    llm_model: str = "claude-opus-5"
+    llm_model: str = "gpt-5.6-sol"
     llm_model_chat: str = ""
     llm_image_model: str = "gpt-image-2"
     llm_embedding_model: str = "text-embedding-3-small"

@@ -13,7 +13,7 @@ x-app-env: &app-env
   PROPAI_PROVIDER_MODE: ${PROPAI_PROVIDER_MODE:-fake}
   SECRET_KEY: ${SECRET_KEY:-}
   IP_HASH_SALT: ${IP_HASH_SALT:-}
-  PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8000}
+  PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://api:8000}
   WHATSAPP_AGENCY_NUMBER: ${WHATSAPP_AGENCY_NUMBER:-}
   EMBEDDING_DIM: ${EMBEDDING_DIM:-1536}
 
@@ -89,18 +89,21 @@ services:
       - ./packages:/app/packages
       - ./services:/app/services
 
-  web:
+  dashboard:
     build:
-      context: ./services/web
-      dockerfile: Containerfile
+      context: .
+      dockerfile: services/dashboard/Containerfile
+    environment: *app-env
     ports:
-      - "127.0.0.1:5173:5173"
-    environment:
-      VITE_API_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8000}
+      - "127.0.0.1:8501:8501"
     depends_on:
       - api
+    command:
+      ["streamlit", "run", "src/propai_dashboard/app.py",
+       "--server.address=0.0.0.0", "--server.port=8501"]
     volumes:
-      - ./services/web/src:/app/src
+      - ./packages:/app/packages
+      - ./services:/app/services
 
 volumes:
   pgdata:
