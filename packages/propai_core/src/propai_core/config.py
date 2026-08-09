@@ -78,6 +78,10 @@ class Settings(BaseSettings):
 
     # --- Public surface -----------------------------------------------------
     public_base_url: str = "http://localhost:8000"
+    cors_origins: list[str] = Field(
+        default=["http://localhost:5173", "http://localhost:3000", "http://localhost:8000"],
+        validation_alias="cors_origins",
+    )
 
     # --- WhatsApp -----------------------------------------------------------
     whatsapp_agency_number: str = ""
