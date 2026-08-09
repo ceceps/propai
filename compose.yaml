@@ -89,21 +89,17 @@ services:
       - ./packages:/app/packages
       - ./services:/app/services
 
-  dashboard:
+  frontend:
     build:
-      context: .
-      dockerfile: services/dashboard/Containerfile
+      context: ./services/frontend
+      dockerfile: Containerfile
     environment: *app-env
     ports:
-      - "127.0.0.1:8501:8501"
+      - "127.0.0.1:3000:3000"
     depends_on:
       - api
-    command:
-      ["streamlit", "run", "src/propai_dashboard/app.py",
-       "--server.address=0.0.0.0", "--server.port=8501"]
     volumes:
-      - ./packages:/app/packages
-      - ./services:/app/services
+      - ./services/frontend:/app
 
 volumes:
   pgdata:

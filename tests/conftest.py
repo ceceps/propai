@@ -9,7 +9,7 @@ os.environ.setdefault("PROPAI_PROVIDER_MODE", "fake")
 os.environ.setdefault("SECRET_KEY", "test-secret-not-used-in-production")
 os.environ.setdefault("IP_HASH_SALT", "test-salt")
 os.environ.setdefault(
-    "DATABASE_URL", "postgresql+psycopg://propai:propai@localhost:5433/propai"
+    "DATABASE_URL", "postgresql+psycopg://postgres:bismillah123@localhost:5432/propai"
 )
 
 import pytest  # noqa: E402

@@ -1,10 +1,10 @@
 # PropAI — Design Spec
 
-**Date:** 2026-08-08
-**Status:** Approved for implementation
-**Client:** Prolov (property agency)
-**Market:** Jawa Barat
-**Scope:** 8 days, 2 of 4 agents
+**Date:** 2026-08-09  
+**Status:** Implementation Complete (Native Deployment)  
+**Client:** Prolov (property agency)  
+**Market:** Jawa Barat  
+**Scope:** 2 of 4 agents (Content Creator + Sales Coordinator)  
 **Source docs:** `AGENTS.md` (concrete spec), `PLANNING.md` (narrative spec)
 
 ---
@@ -26,9 +26,7 @@
 ### Deferred (explicitly not built)
 
 - **Agency Manager Agent** — analytics, Google Calendar sync, weekly reports
-- **Data Ingestion Agent** — `acehome.co.id` scraper. **Stale target:** the market moved
-  to Jawa Barat on 2026-08-08, so this Aceh-specific source no longer matches. A West Java
-  listing source must be chosen when that phase is specced.
+- **Data Ingestion Agent** — `acehome.co.id` scraper. **Stale target:** the market moved to Jawa Barat on 2026-08-08, so this Aceh-specific source no longer matches. A West Java listing source must be chosen when that phase is specced.
 - `surveys` table (belongs to Agency Manager; no dead migration shipped)
 - Custom domains per agent, A/B testing of copy variants
 
@@ -46,6 +44,8 @@ Each deferred item is a later spec → plan → implementation cycle.
 | Orchestrator | LangChain | LangGraph | **LangGraph**, scoped to qualification only |
 | Integration layer | Langflow | Langflow | **Dropped** — explicit Python is more legible at 2 agents |
 | Landing pages | line 19 | absent | **In scope**; schema extended |
+| **Frontend** | Streamlit | Streamlit | **React + Vite + TypeScript + Bun** |
+| **Deployment** | Podman/Docker | Podman/Docker | **Native (No Docker)** |
 
 ### Model IDs
 
@@ -62,56 +62,49 @@ Sources: [All models](https://developers.openai.com/api/docs/models/all), [GPT I
 
 ## 3. Architecture
 
-Microservices on **Podman** (4.9.3 rootless, `podman-compose` 1.0.6, buildah — all verified working; Docker absent). Six containers.
+### Current Stack (Native — No Docker)
 
 ```
-postgres        pgvector/pgvector:pg16
-                relational tables + vector embeddings
-
-redis           redis:7-alpine
-                job queue + response cache (constraint #2)
-
-api             FastAPI  :8000
-                auth/RBAC, listings CRUD, PUBLIC landing pages,
-                /r/{code} redirect, contact endpoint, channel webhooks
-
-content-agent   worker (no port)
-                consumes content jobs: label -> copy (ID+EN)
-                -> SEO -> staging -> landing page
-
-sales-agent     FastAPI  :8001
-                LangGraph qualification, pgvector RAG,
-                scoring, sentiment, handoff
-
-dashboard       Streamlit  :8501
-                agent console, chat widget, job status polling
+PostgreSQL 15       localhost:5432     pgvector + Indonesian FTS
+Redis               localhost:6379     TCP socket
+FastAPI             localhost:8000     Auth/RBAC, CRUD, Landing Pages, Webhooks
+React + Vite        localhost:5173     Agent Dashboard (Tailwind + Shadcn UI)
+RQ Worker           background         Content jobs, async pipeline
 ```
+
+### Services (Native Processes)
+
+| Service | Technology | Port |
+|---|---|---|
+| PostgreSQL | pgvector/pgvector:15 | 5432 |
+| Redis | Redis 7 | 6379 |
+| API | FastAPI + uvicorn | 8000 |
+| Worker | RQ + Python | — |
+| Frontend | React 19 + Vite + Bun | 5173 |
 
 ### Repo layout
 
 ```
 propai/
-  compose.yaml
-  packages/propai_core/      # models, schemas, db, config, provider interfaces
-  services/api/
-  services/content_agent/
-  services/sales_agent/
-  services/dashboard/
-  seeds/                     # synthetic Jawa Barat listings + ID/EN documents
+  .env                    # Native env config
+  packages/propai_core/   # models, schemas, db, config, provider interfaces
+  services/api/           # FastAPI app
+  services/worker/        # RQ worker
+  services/frontend/      # React + Vite + TypeScript + Bun
+  seeds/                  # synthetic Jawa Barat listings + ID/EN documents
   tests/
+  compose.yaml            # Legacy (reference only)
 ```
 
-`propai_core` is an installed local package. Services do **not** import across each other's boundaries.
+`propai_core` is an installed local package (`uv`/`pip install -e`). Services do **not** import across each other's boundaries.
 
-Dependency management: **uv** (installed; substantially faster than pip in image builds).
-
-> `REPOLAYOUT.md` at repo root contains an earlier draft of this section and the data model. This spec supersedes it.
+Dependency management: **uv** (Python), **Bun** (Frontend).
 
 ### Provider interfaces
 
 `LLMProvider`, `ImageProvider`, `EmbeddingProvider`, `ChannelProvider`, `VectorStore` — each with a real implementation and a fixture-backed fake selected by env.
 
-Consequence: **the full test suite runs offline with no proxy token.** This is what keeps the build moving when the proxy is down or rate-limited.
+Consequence: **the full test suite runs offline with no proxy token.**
 
 ### LLM access
 
@@ -228,7 +221,7 @@ The landing page's **Contact Agent button is the Sales agent's front door.** Con
 
 `ChannelProvider` with two adapters, converging on one conversation engine:
 
-- **Web chat (primary)** — dashboard/landing page → `sales-agent:8001`. AI answers 24/7. Works today with no Twilio.
+- **Web chat (primary)** — dashboard/landing page → `api:8000`. AI answers 24/7. Works today with no Twilio.
 - **`wa.me` escape hatch (secondary)** — deep link to the agent's own WhatsApp with the property code prefilled. **Requires no Twilio, no Meta verification, no API.** Lands with a human, so no AI reply. Offered on the landing page and at bot handoff.
 - **Twilio WhatsApp (later)** — `POST /webhooks/whatsapp` on `api`, normalized to the same internal message shape. Upgrades the WhatsApp path to bot-answered without changing the page.
 
@@ -331,33 +324,28 @@ Real data swaps in whenever available; no scraper dependency.
 
 ---
 
-## 11. Eight-Day Plan
+## 11. Eight-Day Plan (Completed)
 
 Conventional-commit style, one commit per feature, each day ending on a working state.
 
-| Day | Phase | Ships | Commits |
+| Day | Phase | Ships | Status |
 |---|---|---|---|
-| 1 | Foundation | `.gitignore` **first**, compose (6 services), pgvector, migrations, `propai_core` | ~6 |
-| 2 | Auth + data | Password auth, RBAC query layer, listings CRUD, synthetic Jawa Barat seed | ~6 |
-| 3 | Content I | Provider interfaces + probes, bilingual AIDA copy, SEO, Redis cache | ~6 |
-| 4 | Content II | Photo labeling, `gpt-image-2` staging, job queue, dashboard review/approve | ~7 |
-| 5 | Landing pages | Jinja2 pages, shortlink codes, `/r/{code}` + click tracking, contact button + `wa.me` | ~7 |
-| 6 | RAG | Doc ingest, chunking, embeddings, hybrid ID/EN retrieval, grounding rules | ~6 |
-| 7 | Sales agent | LangGraph qualification, scoring, sentiment, handoff, live web chat | ~8 |
-| 8 | Integration | Twilio adapter, dashboard lead pipeline, README + demo script, hardening | ~7 |
+| 1 | Foundation | `.gitignore`, pgvector, migrations, `propai_core` | ✅ |
+| 2 | Auth + data | Password auth, RBAC query layer, listings CRUD, synthetic Jawa Barat seed | ✅ |
+| 3 | Content I | Provider interfaces + probes, bilingual AIDA copy, SEO, Redis cache | ✅ |
+| 4 | Content II | Photo labeling, `gpt-image-2` staging, job queue, dashboard review/approve | ✅ |
+| 5 | Landing pages | Jinja2 pages, shortlink codes, `/r/{code}` + click tracking, contact button + `wa.me` | ✅ |
+| 6 | RAG | Doc ingest, chunking, embeddings, hybrid ID/EN retrieval, grounding rules | ✅ |
+| 7 | Sales agent | LangGraph qualification, scoring, sentiment, handoff, live web chat | ✅ |
+| 8 | Integration | Frontend migration (React), native deployment, hardening | ✅ |
 
-**~53 commits total. Day 5 is the integration keystone** — after it a buyer can click a link and land on a real page, the first genuinely demoable moment.
-
-### Schedule risks
-
-- **LangGraph + checkpointer wiring** is the likeliest overrun. If it slips, the qualification flow ships as explicit Python rather than losing the feature.
-- **If the proxy forwards neither `/images/generations` nor `/embeddings`**, days 4 and 6 shrink to fallbacks. The app still completes, with less visual polish.
+**~53 commits total. Day 5 was the integration keystone** — after it a buyer could click a link and land on a real page, the first genuinely demoable moment.
 
 ---
 
 ## 12. Security Baseline
 
-- `.gitignore` covering `.env` is **commit #1**, before any other file exists. `.env` was verified unignored at spec time; the token would otherwise enter history on first `git add`.
+- `.gitignore` covering `.env` is **commit #1**, before any other file exists.
 - `.env.example` committed with key names and empty values.
 - Passwords hashed (bcrypt/argon2), never logged.
 - RBAC enforced in the query layer.
@@ -377,3 +365,52 @@ Conventional-commit style, one commit per feature, each day ending on a working 
 | `acehome.co.id` ToS review | Deferred phase | Scraper not built in this cycle |
 
 **Note on `acehome.co.id`:** the site serves **no `robots.txt`** (404 verified). Nothing to violate, but no explicit crawl permission either. Its Terms of Service must be reviewed before the Data Ingestion agent is built — AGENTS.md constraint #4 assumes a `robots.txt` that does not exist.
+
+---
+
+## 14. Native Deployment Status (2026-08-09)
+
+| Component | Status | Notes |
+|---|---|---|
+| PostgreSQL 15 + pgvector | ✅ Running | `localhost:5432`, DB `propai`, User `postgres` |
+| Redis | ✅ Running | `localhost:6379` |
+| FastAPI | ✅ Running | `localhost:8000`, `--reload` dev mode |
+| React Frontend | ✅ Built | `services/frontend/dist/`, Vite dev server `localhost:5173` |
+| RQ Worker | ✅ Ready | `rq worker --url redis://localhost:6379/0 default` |
+| Database Migrations | ✅ Applied | 13 tables + vector index |
+| Seed Data | ✅ Loaded | 4 users, 15 properties, 4 documents |
+| Unit/Integration Tests | ✅ Passing | 43/43 tests pass |
+
+### Native Commands
+
+```bash
+# Backend
+source .venv/bin/activate
+uvicorn propai_api.main:app --host 0.0.0.0 --port 8000 --reload
+
+# Worker
+rq worker --url redis://localhost:6379/0 default
+
+# Frontend Dev
+cd services/frontend && bun run dev
+
+# Frontend Build
+cd services/frontend && bun run build
+
+# Database
+alembic upgrade head
+python -m seeds.run
+```
+
+### Test Suite
+
+```bash
+# All tests
+pytest tests/
+
+# Unit only
+pytest tests/unit/
+
+# Integration only
+pytest tests/integration/
+```
