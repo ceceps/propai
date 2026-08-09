@@ -54,6 +54,16 @@ class PropertyUpdate(BaseModel):
     specs: dict[str, Any] | None = None
 
 
+class PhotoOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    path: str
+    labels: dict[str, Any]
+    is_staged: bool
+    sort_order: int
+
+
 class PropertyOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -65,4 +75,5 @@ class PropertyOut(BaseModel):
     status: PropertyStatus
     specs: dict[str, Any]
     owner_id: uuid.UUID
+    photos: list[PhotoOut] = []
     created_at: datetime

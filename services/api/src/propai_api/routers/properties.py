@@ -7,6 +7,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from propai_api.deps import CurrentUser, SessionDep, require
 from propai_api.schemas import PropertyCreate, PropertyOut, PropertyUpdate
@@ -25,7 +26,10 @@ def _get_scoped(session, user, property_id: uuid.UUID) -> Property:
     else: a 403 would confirm the id is real, letting an agent enumerate a
     rival's portfolio by probing ids.
     """
-    stmt = scope_properties(select(Property).where(Property.id == property_id), user)
+    stmt = (
+        scope_properties(select(Property).where(Property.id == property_id), user)
+        .options(selectinload(Property.photos))
+    )
     prop = session.scalar(stmt)
     if prop is None:
         raise _NOT_FOUND
@@ -39,7 +43,7 @@ def list_properties(
     limit: int = Query(50, le=200),
     offset: int = Query(0, ge=0),
 ) -> list[Property]:
-    stmt = scope_properties(select(Property), user)
+    stmt = scope_properties(select(Property), user).options(selectinload(Property.photos))
     stmt = stmt.order_by(Property.created_at.desc()).limit(limit).offset(offset)
     return list(session.scalars(stmt))
 

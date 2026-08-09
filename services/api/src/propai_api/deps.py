@@ -8,7 +8,7 @@ from typing import Annotated
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from propai_core.db import get_session
@@ -44,6 +44,10 @@ def current_user(
     user = session.scalar(select(User).where(User.id == user_id))
     if user is None or not user.is_active:
         raise _UNAUTHENTICATED
+    
+    # Inject user ID into session for PostgreSQL Row-Level Security
+    session.execute(text("SET LOCAL app.current_user_id = :uid"), {"uid": str(user.id)})
+    
     return user
 
 

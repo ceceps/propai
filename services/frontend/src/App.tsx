@@ -17,6 +17,7 @@ interface Property {
   location: string;
   status: string;
   specs: Record<string, any>;
+  photos: { path: string; labels: any }[];
 }
 
 export default function App() {
@@ -163,6 +164,17 @@ export default function App() {
                     <span className="text-xs text-slate-400">{p.location}</span>
                   </div>
                   <h3 className="text-lg font-bold text-white mb-2">{p.title}</h3>
+                  {p.photos?.length > 0 && (
+                    <img 
+                      src={`http://localhost:8000${JSON.parse(p.photos[0].path).feature_image}`} 
+                      alt={p.title}
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        console.error('Image failed to load:', target.src);
+                      }}
+                      className="w-full h-48 object-cover rounded-lg mb-4"
+                    />
+                  )}
                   <p className="text-indigo-400 font-semibold text-lg mb-4">{formattedPrice}</p>
                   <p className="text-slate-300 text-sm mb-4 line-clamp-3">{p.description || 'No description provided.'}</p>
                 </div>

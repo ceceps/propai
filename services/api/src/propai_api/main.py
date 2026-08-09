@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from propai_api.routers import auth, properties
 from propai_core.config import get_settings
@@ -28,6 +29,8 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(properties.router)
+
+app.mount("/photos", StaticFiles(directory="/home/ceceps/projects/propai/services/frontend/public/photos"), name="photos")
 
 
 @app.get("/health", tags=["ops"])
