@@ -33,17 +33,31 @@ class Settings(BaseSettings):
     )
 
     # --- LLM proxy ----------------------------------------------------------
-    llm_base_url: str = "https://api.openai.com/v1"
+    llm_base_url: str = Field(
+        default="https://api.openai.com/v1",
+        validation_alias=AliasChoices(
+            "llm_base_url",
+            "nine_router_base_url",
+            "openai_base_url",
+        ),
+    )
     # This project's .env predates propai and names the token LLM_AUTH_TOKEN
     # (with LLM_API_KEY as an older duplicate). Accept all three rather than
     # asking the environment to rename around us; first match wins.
     llm_api_token: str = Field(
         default="",
         validation_alias=AliasChoices(
-            "llm_api_token", "llm_auth_token", "llm_api_key"
+            "llm_api_token",
+            "llm_auth_token",
+            "llm_api_key",
+            "nine_router_api_key",
+            "openai_api_key",
         ),
     )
-    llm_model: str = "gpt-5.6-sol"
+    llm_model: str = Field(
+        default="gpt-5.6-sol",
+        validation_alias=AliasChoices("llm_model", "nine_router_model", "openai_model"),
+    )
     llm_model_chat: str = ""
     llm_image_model: str = "gpt-image-2"
     llm_embedding_model: str = "text-embedding-3-small"
