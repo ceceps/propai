@@ -1,0 +1,11 @@
+{
+  "name": "PropAI Applicaton",
+  "image": "mcr.microsoft.com/devcontainers/universal:2",
+  "features": { // This installs the Docker CLI and mounts the host Docker socket automatically
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
+      "version": "latest",
+      "enableNonRootDocker": "true"
+    }
+  },
+  "remoteUser": "vscode"
+}
