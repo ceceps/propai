@@ -14,6 +14,15 @@ import sqlalchemy as sa
 import pgvector.sqlalchemy
 from sqlalchemy.dialects import postgresql
 
+
+def _vector_extension_available() -> bool:
+    connection = op.get_bind()
+    try:
+        result = connection.execute(sa.text("SELECT 1 FROM pg_extension WHERE extname = 'vector'"))
+        return result.scalar() == 1
+    except Exception:
+        return False
+
 revision: str = "c841cc3a0025"
 down_revision: str | None = "0001_extensions"
 branch_labels: str | Sequence[str] | None = None
@@ -211,41 +220,69 @@ def upgrade() -> None:
     op.create_index(
         op.f("ix_property_photos_property_id"), "property_photos", ["property_id"], unique=False
     )
-    op.create_table(
-        "document_chunks",
-        sa.Column("document_id", sa.Uuid(), nullable=False),
-        sa.Column("chunk_index", sa.Integer(), nullable=False),
-        sa.Column("content", sa.Text(), nullable=False),
-        sa.Column("embedding", pgvector.sqlalchemy.vector.VECTOR(dim=1536), nullable=True),
-        sa.Column("meta", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
-        sa.Column("id", sa.Uuid(), nullable=False),
-        sa.Column(
-            "created_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("now()"),
-            nullable=False,
-        ),
-        sa.Column(
-            "updated_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("now()"),
-            nullable=False,
-        ),
-        sa.ForeignKeyConstraint(["document_id"], ["documents.id"], ondelete="CASCADE"),
-        sa.PrimaryKeyConstraint("id"),
-    )
-    op.create_index(
-        "ix_chunk_embedding_hnsw",
-        "document_chunks",
-        ["embedding"],
-        unique=False,
-        postgresql_using="hnsw",
-        postgresql_with={"m": 16, "ef_construction": 64},
-        postgresql_ops={"embedding": "vector_cosine_ops"},
-    )
-    op.create_index(
-        op.f("ix_document_chunks_document_id"), "document_chunks", ["document_id"], unique=False
-    )
+    if _vector_extension_available():
+        op.create_table(
+            "document_chunks",
+            sa.Column("document_id", sa.Uuid(), nullable=False),
+            sa.Column("chunk_index", sa.Integer(), nullable=False),
+            sa.Column("content", sa.Text(), nullable=False),
+            sa.Column("embedding", pgvector.sqlalchemy.vector.VECTOR(dim=1536), nullable=True),
+            sa.Column("meta", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+            sa.Column("id", sa.Uuid(), nullable=False),
+            sa.Column(
+                "created_at",
+                sa.DateTime(timezone=True),
+                server_default=sa.text("now()"),
+                nullable=False,
+            ),
+            sa.Column(
+                "updated_at",
+                sa.DateTime(timezone=True),
+                server_default=sa.text("now()"),
+                nullable=False,
+            ),
+            sa.ForeignKeyConstraint(["document_id"], ["documents.id"], ondelete="CASCADE"),
+            sa.PrimaryKeyConstraint("id"),
+        )
+        op.create_index(
+            "ix_chunk_embedding_hnsw",
+            "document_chunks",
+            ["embedding"],
+            unique=False,
+            postgresql_using="hnsw",
+            postgresql_with={"m": 16, "ef_construction": 64},
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        )
+        op.create_index(
+            op.f("ix_document_chunks_document_id"), "document_chunks", ["document_id"], unique=False
+        )
+    else:
+        op.create_table(
+            "document_chunks",
+            sa.Column("document_id", sa.Uuid(), nullable=False),
+            sa.Column("chunk_index", sa.Integer(), nullable=False),
+            sa.Column("content", sa.Text(), nullable=False),
+            sa.Column("embedding", sa.Text(), nullable=True),
+            sa.Column("meta", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+            sa.Column("id", sa.Uuid(), nullable=False),
+            sa.Column(
+                "created_at",
+                sa.DateTime(timezone=True),
+                server_default=sa.text("now()"),
+                nullable=False,
+            ),
+            sa.Column(
+                "updated_at",
+                sa.DateTime(timezone=True),
+                server_default=sa.text("now()"),
+                nullable=False,
+            ),
+            sa.ForeignKeyConstraint(["document_id"], ["documents.id"], ondelete="CASCADE"),
+            sa.PrimaryKeyConstraint("id"),
+        )
+        op.create_index(
+            op.f("ix_document_chunks_document_id"), "document_chunks", ["document_id"], unique=False
+        )
     op.create_table(
         "landing_pages",
         sa.Column("property_id", sa.Uuid(), nullable=False),
@@ -463,13 +500,16 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_landing_pages_property_id"), table_name="landing_pages")
     op.drop_table("landing_pages")
     op.drop_index(op.f("ix_document_chunks_document_id"), table_name="document_chunks")
-    op.drop_index(
-        "ix_chunk_embedding_hnsw",
-        table_name="document_chunks",
-        postgresql_using="hnsw",
-        postgresql_with={"m": 16, "ef_construction": 64},
-        postgresql_ops={"embedding": "vector_cosine_ops"},
-    )
+    try:
+        op.drop_index(
+            "ix_chunk_embedding_hnsw",
+            table_name="document_chunks",
+            postgresql_using="hnsw",
+            postgresql_with={"m": 16, "ef_construction": 64},
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        )
+    except Exception:
+        pass
     op.drop_table("document_chunks")
     op.drop_index(op.f("ix_property_photos_property_id"), table_name="property_photos")
     op.drop_table("property_photos")

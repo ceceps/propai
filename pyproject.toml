@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "propai"
 version = "0.1.0"
@@ -17,6 +21,9 @@ dev = [
 
 [tool.uv.workspace]
 members = ["packages/*"]
+
+[tool.setuptools]
+packages = []
 
 [tool.uv.sources]
 propai-core = { workspace = true }

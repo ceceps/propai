@@ -12,7 +12,8 @@ import os
 import httpx
 import streamlit as st
 
-API_BASE = os.getenv("PUBLIC_BASE_URL", "http://api:8000")
+DEFAULT_API_BASE = "http://127.0.0.1:8000"
+API_BASE = os.getenv("API_BASE_URL") or os.getenv("PUBLIC_BASE_URL") or DEFAULT_API_BASE
 
 st.set_page_config(page_title="PropAI — Prolov", page_icon="🏠", layout="wide")
 
